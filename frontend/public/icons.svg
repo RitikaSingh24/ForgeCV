@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="anvil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 10h10" />
+    <path d="M5 6h14a2 2 0 0 1 2 2v2H3V8a2 2 0 0 1 2-2z" />
+    <path d="M6 10v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6" />
+    <path d="M9 18v2a1 1 0 0 1-1 1H5" />
+    <path d="M15 18v2a1 1 0 0 0 1 1h3" />
+  </symbol>
+</svg>
