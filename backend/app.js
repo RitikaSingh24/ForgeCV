@@ -9,27 +9,46 @@ import routes from "./src/routes/index.js";
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
+const envClientUrls = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((url) => url.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
+const defaultAllowedOrigins = [
+  "https://forge-cv-blue.vercel.app",
+  "https://forgecv.vercel.app",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-].filter(Boolean);
+  "http://localhost:5175",
+];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  })
-);
+const allowedOrigins = Array.from(new Set([...envClientUrls, ...defaultAllowedOrigins]));
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    const cleanOrigin = origin.replace(/\/+$/, "");
+
+    const isAllowed =
+      allowedOrigins.includes(cleanOrigin) ||
+      /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(cleanOrigin) ||
+      /\.vercel\.app$/.test(cleanOrigin);
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
