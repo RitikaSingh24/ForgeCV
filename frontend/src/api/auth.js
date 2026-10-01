@@ -33,6 +33,14 @@ export const authApi = {
     const res = await apiClient.patch("/auth/password", data);
     return res.data;
   },
+  forgotPassword: async (data) => {
+    const res = await apiClient.post("/auth/forgot-password", data);
+    return res.data;
+  },
+  resetPassword: async (data) => {
+    const res = await apiClient.post("/auth/reset-password", data);
+    return res.data;
+  },
 };
 
 export default authApi;

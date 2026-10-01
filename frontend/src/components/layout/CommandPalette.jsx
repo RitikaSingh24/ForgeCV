@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, LayoutDashboard, FileText, BarChart3, Clock, Settings, X, ChevronRight } from "lucide-react";
+import { Search, FileText, X, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useResumes } from "@/hooks/useResumes";
 
@@ -11,14 +11,6 @@ export function CommandPalette({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { resumes } = useResumes();
 
-  const navItems = [
-    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, category: "Navigation" },
-    { title: "My Resumes", href: "/resumes", icon: FileText, category: "Navigation" },
-    { title: "Insights & Analytics", href: "/insights", icon: BarChart3, category: "Navigation" },
-    { title: "Activity History", href: "/history", icon: Clock, category: "Navigation" },
-    { title: "Settings", href: "/settings", icon: Settings, category: "Navigation" },
-  ];
-
   const resumeItems = (resumes || []).map((r) => ({
     title: r.title,
     subtitle: `${r.versionsCount} version(s) • ATS ${r.currentVersion?.score || "N/A"}`,
@@ -27,9 +19,7 @@ export function CommandPalette({ isOpen, onClose }) {
     category: "Resumes",
   }));
 
-  const allItems = [...navItems, ...resumeItems];
-
-  const filteredItems = allItems.filter(
+  const filteredItems = resumeItems.filter(
     (item) =>
       item.title.toLowerCase().includes(query.toLowerCase()) ||
       (item.subtitle && item.subtitle.toLowerCase().includes(query.toLowerCase()))
@@ -84,7 +74,7 @@ export function CommandPalette({ isOpen, onClose }) {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search resumes, navigation, pages... (Use ↑↓ arrows)"
+              placeholder="Search uploaded resumes..."
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -105,7 +95,7 @@ export function CommandPalette({ isOpen, onClose }) {
           <div className="flex-1 overflow-y-auto max-h-[60vh] p-2 divide-y divide-border/30">
             {filteredItems.length === 0 ? (
               <div className="p-8 text-center text-xs text-ink-muted">
-                No matching results found for "{query}".
+                No matching resumes found for "{query}".
               </div>
             ) : (
               filteredItems.map((item, idx) => {
@@ -152,19 +142,6 @@ export function CommandPalette({ isOpen, onClose }) {
                 );
               })
             )}
-          </div>
-
-          {/* Footer Shortcuts hint */}
-          <div className="hidden sm:flex items-center justify-between px-4 py-2.5 bg-surface-2/60 border-t border-border text-[11px] text-ink-muted">
-            <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded bg-surface border border-border">↑↓</span>
-              <span>Navigate</span>
-              <span className="px-1.5 py-0.5 rounded bg-surface border border-border ml-2">↵</span>
-              <span>Select</span>
-            </div>
-            <div>
-              <span className="px-1.5 py-0.5 rounded bg-surface border border-border">ESC</span> to close
-            </div>
           </div>
         </motion.div>
       </div>

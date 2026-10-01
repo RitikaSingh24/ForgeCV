@@ -30,8 +30,8 @@ export function Register() {
     setLoading(true);
     try {
       const res = await register(formData);
-      showToast(res.message || "Account created! Please check your email for the verification OTP.", "success");
-      navigate("/verify-email", { state: { email: formData.email } });
+      showToast(res.message || "Account created successfully! Please sign in with your email and password.", "success");
+      navigate("/login", { state: { email: formData.email } });
     } catch (err) {
       showToast(err.message || "Registration failed. Please try again.", "error");
     } finally {

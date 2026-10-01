@@ -31,8 +31,8 @@ export const removeResume = asyncHandler(async (req, res) => {
 });
 
 export const analyze = asyncHandler(async (req, res) => {
-  const { versionId, targetRole } = req.body;
-  const analysis = await analyzeVersion(req.user._id, req.params.id, versionId, targetRole);
+  const { versionId, targetRole, jobDescription } = req.body;
+  const analysis = await analyzeVersion(req.user._id, req.params.id, versionId, targetRole, jobDescription);
   res.status(200).json(new ApiResponse(200, analysis, "Resume analysis completed."));
 });
 

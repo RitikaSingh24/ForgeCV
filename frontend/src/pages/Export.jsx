@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
-import { Download, ArrowLeft, FileText, CheckCircle } from "lucide-react";
+import html2pdf from "html2pdf.js";
+import { Download, ArrowLeft, FileText, Printer, Loader2 } from "lucide-react";
 import PageHeader from "@/components/layout/PageHeader";
 import VersionSwitcher from "@/components/resume/VersionSwitcher";
-import { ResumeDocument } from "@/components/export/ResumeDocument";
+import { HTMLResumeView } from "@/components/export/HTMLResumeView";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
@@ -15,6 +15,7 @@ export function Export() {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useResumeDetail(id);
   const [activeVersionId, setActiveVersionId] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const resume = data?.resume;
   const versions = data?.versions || [];
@@ -53,6 +54,32 @@ export function Export() {
     .replace(/[^a-zA-Z0-9_-]/g, "_")
     .concat(".pdf");
 
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById("printable-resume");
+    if (!element) return;
+
+    setIsGenerating(true);
+    try {
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: sanitizedFilename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      window.print();
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -86,37 +113,38 @@ export function Export() {
           </div>
         </div>
 
-        <PDFDownloadLink
-          document={<ResumeDocument parsedSections={parsedSections} title={resume.title} />}
-          fileName={sanitizedFilename}
-        >
-          {({ loading }) => (
-            <Button variant="primary" size="md" loading={loading} className="w-full sm:w-auto">
-              <Download className="w-4 h-4" />
-              {loading ? "Generating PDF..." : "Download PDF Resume"}
-            </Button>
-          )}
-        </PDFDownloadLink>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handlePrint}
+            className="flex-1 sm:flex-none cursor-pointer"
+          >
+            <Printer className="w-4 h-4" /> Print / Save as PDF
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            loading={isGenerating}
+            onClick={handleDownloadPDF}
+            className="flex-1 sm:flex-none cursor-pointer"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> Download PDF Resume
+              </>
+            )}
+          </Button>
+        </div>
       </Card>
 
-      {/* Desktop Live PDF Preview Viewer */}
-      <div className="hidden md:block w-full h-[700px] rounded-3xl overflow-hidden border border-border shadow-lg bg-surface">
-        <PDFViewer width="100%" height="100%" className="border-none">
-          <ResumeDocument parsedSections={parsedSections} title={resume.title} />
-        </PDFViewer>
-      </div>
-
-      {/* Mobile Card Preview Fallback */}
-      <div className="md:hidden">
-        <Card className="p-8 text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <CheckCircle className="w-7 h-7" />
-          </div>
-          <h3 className="font-display font-bold text-base text-ink">PDF Document Ready</h3>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Live PDF iframe preview is hidden on smaller touch screens for optimal performance. Click the download button above to retrieve your document.
-          </p>
-        </Card>
+      {/* Live PDF Preview Viewer */}
+      <div className="w-full overflow-hidden p-2 sm:p-6 bg-surface-2/40 rounded-3xl border border-border">
+        <HTMLResumeView parsedSections={parsedSections} title={resume.title} />
       </div>
     </div>
   );

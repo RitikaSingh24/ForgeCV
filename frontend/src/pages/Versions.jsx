@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Layers, Sparkles, Upload, ChevronRight, Search } from "lucide-react";
+import { Layers, Sparkles, Upload, ChevronRight, Search, Trash2, AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/layout/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -8,11 +8,26 @@ import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useResumes } from "@/hooks/useResumes";
 import { formatDate } from "@/lib/utils";
 
 export function Versions() {
   const { versions, isLoadingVersions } = useAnalytics();
+  const { deleteResume } = useResumes();
   const [searchFilter, setSearchFilter] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handleDelete = (e, resumeId) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (confirmDeleteId === resumeId) {
+      deleteResume(resumeId);
+      setConfirmDeleteId(null);
+    } else {
+      setConfirmDeleteId(resumeId);
+      setTimeout(() => setConfirmDeleteId(null), 4000);
+    }
+  };
 
   if (isLoadingVersions) {
     return (
@@ -66,6 +81,7 @@ export function Versions() {
             const isRewrite = v.sourceType === "rewrite";
             const scoreVariant =
               v.score >= 80 ? "success" : v.score >= 60 ? "warning" : v.score !== null ? "danger" : "neutral";
+            const isConfirming = confirmDeleteId === v.resumeId;
 
             return (
               <Card key={v._id} hoverable className="p-5">
@@ -90,9 +106,28 @@ export function Versions() {
                       </div>
                     </div>
 
-                    <Badge variant={scoreVariant}>
-                      {v.score !== null && v.score !== undefined ? `${v.score} ATS` : "Pending"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={scoreVariant}>
+                        {v.score !== null && v.score !== undefined ? `${v.score} ATS` : "Pending"}
+                      </Badge>
+                      <button
+                        onClick={(e) => handleDelete(e, v.resumeId)}
+                        className={`p-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
+                          isConfirming
+                            ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
+                            : "text-ink-muted hover:text-danger hover:bg-surface-2"
+                        }`}
+                        title={isConfirming ? "Confirm delete resume" : "Delete resume history"}
+                      >
+                        {isConfirming ? (
+                          <span className="flex items-center gap-1 text-[11px] px-1">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Delete?
+                          </span>
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs text-ink-muted">

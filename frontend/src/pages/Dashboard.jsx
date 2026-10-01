@@ -51,14 +51,16 @@ export function Dashboard() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title={`Welcome back, ${profile?.name?.split(" ")[0] || "User"} 👋`}
+        title={`Welcome back, ${profile?.name?.split(" ")[0] || "User"} `}
         description="Here is your ATS resume performance summary and recent version iterations."
         action={
-          <Link to="/resumes">
-            <Button variant="primary" size="sm">
-              <UploadCloud className="w-4 h-4" /> Upload Resume
-            </Button>
-          </Link>
+          !isNewUser && (
+            <Link to="/resumes">
+              <Button variant="primary" size="sm">
+                <UploadCloud className="w-4 h-4" /> Upload Resume
+              </Button>
+            </Link>
+          )
         }
       />
 
@@ -113,9 +115,18 @@ export function Dashboard() {
             </Card>
 
             {/* Latest ATS Score Gauge */}
-            <Card className="p-6 flex flex-col items-center justify-center text-center">
-              <h3 className="font-display font-bold text-base text-ink mb-2">
-                Latest ATS Score
+            <Card
+              onClick={() => {
+                if (latestAnalysis?.resumeId) {
+                  navigate(`/resumes/${latestAnalysis.resumeId}`);
+                } else {
+                  navigate("/resumes");
+                }
+              }}
+              className="p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent/40 transition-all group"
+            >
+              <h3 className="font-display font-bold text-base text-ink mb-2 group-hover:text-accent transition-colors">
+                Latest ATS Score →
               </h3>
               <AtsGauge score={latestAnalysis?.atsScore || 0} size="md" />
               {latestAnalysis?.summary && (

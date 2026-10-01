@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Input } from "@/components/ui/Input";
@@ -8,7 +8,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useUI } from "@/context/UIContext";
 
 export function Login() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const location = useLocation();
+  const [formData, setFormData] = useState({ 
+    email: location.state?.email || "", 
+    password: "" 
+  });
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { showToast } = useUI();
@@ -50,15 +54,27 @@ export function Login() {
           required
         />
 
-        <Input
-          label="Password"
-          type="password"
-          placeholder="Enter your password"
-          icon={Lock}
-          value={formData.password}
-          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-          required
-        />
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-ink tracking-wide">
+              Password
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-xs font-semibold text-accent hover:text-accent-strong hover:underline transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <Input
+            type="password"
+            placeholder="Enter your password"
+            icon={Lock}
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+          />
+        </div>
 
         <Button
           type="submit"

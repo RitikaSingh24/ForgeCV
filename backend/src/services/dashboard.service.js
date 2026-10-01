@@ -59,7 +59,13 @@ export const getDashboardData = async (user) => {
   const latestVersion = versions[versions.length - 1];
   let latestAnalysis = null;
   if (latestVersion) {
-    latestAnalysis = await Analysis.findOne({ versionId: latestVersion._id });
+    const rawAnalysis = await Analysis.findOne({ versionId: latestVersion._id });
+    if (rawAnalysis) {
+      latestAnalysis = {
+        ...rawAnalysis.toObject(),
+        resumeId: latestVersion.resumeId,
+      };
+    }
   }
 
   // Latest 3 versions with resume title
@@ -98,15 +104,18 @@ export const getDashboardData = async (user) => {
   analyses.forEach((a) => {
     const v = versionMap.get(a.versionId.toString());
     if (v) {
-      activityEvents.push({
-        id: `an_${a._id}`,
-        type: "analysis",
-        title: `Analyzed ${v.label} (Score: ${a.atsScore})`,
-        resumeTitle: resumeMap.get(v.resumeId.toString()) || "Resume",
-        versionLabel: v.label,
-        score: a.atsScore,
-        at: a.createdAt,
-      });
+      const timeDiff = Math.abs(new Date(a.updatedAt || a.createdAt) - new Date(v.createdAt));
+      if (timeDiff > 5000) {
+        activityEvents.push({
+          id: `an_${a._id}`,
+          type: "analysis",
+          title: `Analyzed ${v.label} (Score: ${a.atsScore})`,
+          resumeTitle: resumeMap.get(v.resumeId.toString()) || "Resume",
+          versionLabel: v.label,
+          score: a.atsScore,
+          at: a.updatedAt || a.createdAt,
+        });
+      }
     }
   });
 

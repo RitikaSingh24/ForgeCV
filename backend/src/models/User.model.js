@@ -39,6 +39,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    resetOtpHash: {
+      type: String,
+      default: null,
+    },
+    resetOtpExpires: {
+      type: Date,
+      default: null,
+    },
+    resetOtpAttempts: {
+      type: Number,
+      default: 0,
+    },
+    resetOtpLastSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -61,6 +77,10 @@ userSchema.set("toJSON", {
     delete ret.otpExpires;
     delete ret.otpAttempts;
     delete ret.otpLastSentAt;
+    delete ret.resetOtpHash;
+    delete ret.resetOtpExpires;
+    delete ret.resetOtpAttempts;
+    delete ret.resetOtpLastSentAt;
     delete ret.__v;
     return ret;
   },

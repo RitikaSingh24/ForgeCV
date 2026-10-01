@@ -3,7 +3,8 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Checkbox({ checked, onChange, label, className, id, ...props }) {
-  const checkboxId = id || React.useId();
+  const generatedId = React.useId();
+  const checkboxId = id || generatedId;
 
   return (
     <label htmlFor={checkboxId} className={cn("inline-flex items-center gap-3 cursor-pointer select-none group", className)}>

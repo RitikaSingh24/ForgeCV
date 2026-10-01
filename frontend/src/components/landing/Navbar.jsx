@@ -24,13 +24,7 @@ export function Navbar() {
 
         {/* CTA Buttons */}
         <div className="hidden md:flex items-center gap-3">
-          {isAuthenticated ? (
-            <Link to="/dashboard">
-              <Button variant="primary" size="sm">
-                Go to Dashboard <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          ) : (
+          {!isAuthenticated && (
             <>
               <Link to="/login">
                 <Button variant="ghost" size="sm">Sign in</Button>

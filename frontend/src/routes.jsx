@@ -9,11 +9,11 @@ const Landing = lazy(() => import("@/pages/Landing"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Resumes = lazy(() => import("@/pages/Resumes"));
 const ResumeDetail = lazy(() => import("@/pages/ResumeDetail"));
-const Export = lazy(() => import("@/pages/Export"));
 const Insights = lazy(() => import("@/pages/Insights"));
 const Versions = lazy(() => import("@/pages/Versions"));
 const History = lazy(() => import("@/pages/History"));
@@ -99,6 +99,14 @@ export function AppRouter() {
               </PublicAuthRoute>
             }
           />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicAuthRoute>
+                <ForgotPassword />
+              </PublicAuthRoute>
+            }
+          />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* Protected Dashboard App Routes */}
@@ -106,7 +114,6 @@ export function AppRouter() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/resumes" element={<Resumes />} />
             <Route path="/resumes/:id" element={<ResumeDetail />} />
-            <Route path="/resumes/:id/export" element={<Export />} />
             <Route path="/insights" element={<Insights />} />
             <Route path="/versions" element={<Versions />} />
             <Route path="/history" element={<History />} />

@@ -112,13 +112,20 @@ const styles = StyleSheet.create({
 
 export function ResumeDocument({ parsedSections = {}, title = "Resume" }) {
   const basics = parsedSections.basics || {};
-  const summary = parsedSections.summary || "";
-  const experience = parsedSections.experience || [];
-  const projects = parsedSections.projects || [];
-  const education = parsedSections.education || [];
-  const skills = parsedSections.skills || [];
-  const certifications = parsedSections.certifications || [];
-  const languages = parsedSections.languages || [];
+  const summary = typeof parsedSections.summary === "string" ? parsedSections.summary : "";
+
+  const safeArray = (val) => {
+    if (Array.isArray(val)) return val.filter((item) => typeof item === "string" ? item.trim().length > 0 : Boolean(item));
+    if (typeof val === "string" && val.trim().length > 0) return val.split(",").map((s) => s.trim()).filter(Boolean);
+    return [];
+  };
+
+  const experience = Array.isArray(parsedSections.experience) ? parsedSections.experience : [];
+  const projects = Array.isArray(parsedSections.projects) ? parsedSections.projects : [];
+  const education = Array.isArray(parsedSections.education) ? parsedSections.education : [];
+  const skills = safeArray(parsedSections.skills);
+  const certifications = safeArray(parsedSections.certifications);
+  const languages = safeArray(parsedSections.languages);
 
   return (
     <Document title={title} author={basics.name || "ForgeCV User"}>
@@ -131,7 +138,7 @@ export function ResumeDocument({ parsedSections = {}, title = "Resume" }) {
             {basics.email && <Text style={styles.contactItem}>{basics.email}</Text>}
             {basics.phone && <Text style={styles.contactItem}>•  {basics.phone}</Text>}
             {basics.location && <Text style={styles.contactItem}>•  {basics.location}</Text>}
-            {(basics.links || []).map((link, idx) => (
+            {safeArray(basics.links).map((link, idx) => (
               <Text key={idx} style={styles.contactItem}>•  {link}</Text>
             ))}
           </View>
@@ -149,26 +156,31 @@ export function ResumeDocument({ parsedSections = {}, title = "Resume" }) {
         {experience.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Work Experience</Text>
-            {experience.map((exp, idx) => (
-              <View key={idx} style={{ marginBottom: 6 }}>
-                <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>
-                    {exp.role || "Role"} {exp.company ? `| ${exp.company}` : ""}
-                  </Text>
-                  <Text style={styles.itemSub}>
-                    {exp.start || ""} {exp.end ? `- ${exp.end}` : ""}
-                  </Text>
-                </View>
-                <View style={styles.bulletList}>
-                  {(exp.bullets || []).map((bullet, bIdx) => (
-                    <View key={bIdx} style={styles.bulletItem}>
-                      <Text style={styles.bulletPoint}>•</Text>
-                      <Text style={styles.bulletText}>{bullet}</Text>
+            {experience.map((exp, idx) => {
+              const bullets = safeArray(exp.bullets);
+              return (
+                <View key={idx} style={{ marginBottom: 6 }}>
+                  <View style={styles.itemHeader}>
+                    <Text style={styles.itemTitle}>
+                      {exp.role || "Role"} {exp.company ? `| ${exp.company}` : ""}
+                    </Text>
+                    <Text style={styles.itemSub}>
+                      {exp.start || ""} {exp.end ? `- ${exp.end}` : ""}
+                    </Text>
+                  </View>
+                  {bullets.length > 0 && (
+                    <View style={styles.bulletList}>
+                      {bullets.map((bullet, bIdx) => (
+                        <View key={bIdx} style={styles.bulletItem}>
+                          <Text style={styles.bulletPoint}>•</Text>
+                          <Text style={styles.bulletText}>{bullet}</Text>
+                        </View>
+                      ))}
                     </View>
-                  ))}
+                  )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 
@@ -176,24 +188,30 @@ export function ResumeDocument({ parsedSections = {}, title = "Resume" }) {
         {projects.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Key Projects</Text>
-            {projects.map((proj, idx) => (
-              <View key={idx} style={{ marginBottom: 6 }}>
-                <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>{proj.name || "Project"}</Text>
-                  {(proj.tech || []).length > 0 && (
-                    <Text style={styles.itemSub}>Tech: {proj.tech.join(", ")}</Text>
+            {projects.map((proj, idx) => {
+              const techList = safeArray(proj.tech);
+              const bullets = safeArray(proj.bullets);
+              return (
+                <View key={idx} style={{ marginBottom: 6 }}>
+                  <View style={styles.itemHeader}>
+                    <Text style={styles.itemTitle}>{proj.name || "Project"}</Text>
+                    {techList.length > 0 && (
+                      <Text style={styles.itemSub}>Tech: {techList.join(", ")}</Text>
+                    )}
+                  </View>
+                  {bullets.length > 0 && (
+                    <View style={styles.bulletList}>
+                      {bullets.map((bullet, bIdx) => (
+                        <View key={bIdx} style={styles.bulletItem}>
+                          <Text style={styles.bulletPoint}>•</Text>
+                          <Text style={styles.bulletText}>{bullet}</Text>
+                        </View>
+                      ))}
+                    </View>
                   )}
                 </View>
-                <View style={styles.bulletList}>
-                  {(proj.bullets || []).map((bullet, bIdx) => (
-                    <View key={bIdx} style={styles.bulletItem}>
-                      <Text style={styles.bulletPoint}>•</Text>
-                      <Text style={styles.bulletText}>{bullet}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 

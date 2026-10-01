@@ -26,7 +26,7 @@ export function ScoreEvolutionChart({ data = [] }) {
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 15, right: 25, left: -15, bottom: 5 }}>
           <defs>
             <linearGradient id="scoreAreaGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#E2622B" stopOpacity={0.35} />
@@ -39,6 +39,7 @@ export function ScoreEvolutionChart({ data = [] }) {
             fontSize={11}
             tickLine={false}
             axisLine={false}
+            padding={{ left: 40, right: 40 }}
           />
           <YAxis
             domain={[0, 100]}
@@ -55,7 +56,8 @@ export function ScoreEvolutionChart({ data = [] }) {
             strokeWidth={3}
             fillOpacity={1}
             fill="url(#scoreAreaGrad)"
-            activeDot={{ r: 6, fill: "#E2622B", stroke: "#FFFFFF", strokeWidth: 2 }}
+            dot={{ r: 5, fill: "#E2622B", stroke: "#FFFFFF", strokeWidth: 2 }}
+            activeDot={{ r: 7, fill: "#E2622B", stroke: "#FFFFFF", strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>

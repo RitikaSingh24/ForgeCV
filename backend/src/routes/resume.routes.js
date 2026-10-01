@@ -29,6 +29,12 @@ const analyzeSchema = {
   body: z.object({
     versionId: z.string().optional(),
     targetRole: z.string().optional(),
+    jobDescription: z
+      .string()
+      .optional()
+      .refine((val) => !val || val.trim() === "" || (val.trim().length >= 50 && val.trim().length <= 8000), {
+        message: "Job description must be between 50 and 8000 characters.",
+      }),
   }),
 };
 

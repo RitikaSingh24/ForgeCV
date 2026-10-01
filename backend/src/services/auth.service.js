@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 import ApiError from "../utils/ApiError.js";
-import { sendOtpEmail } from "./mail.service.js";
+import { sendOtpEmail, sendPasswordResetOtpEmail } from "./mail.service.js";
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -20,41 +20,25 @@ const generateToken = (userId) => {
 };
 
 export const registerUser = async ({ name, email, password }) => {
-  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (!name || !email || !password) {
+    throw new ApiError(400, "Please provide name, email, and password.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingUser = await User.findOne({ email: normalizedEmail });
 
   if (existingUser) {
-    if (!existingUser.isVerified) {
-      // Re-send OTP for unverified existing account
-      const otp = generateOtp();
-      const otpHash = await bcrypt.hash(otp, 10);
-      existingUser.otpHash = otpHash;
-      existingUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-      existingUser.otpAttempts = 0;
-      existingUser.otpLastSentAt = new Date();
-      await existingUser.save();
-      await sendOtpEmail(existingUser.email, existingUser.name, otp);
-      return { message: "Account exists but is unverified. A new verification OTP has been sent." };
-    }
     throw new ApiError(400, "User with this email already exists.");
   }
 
-  const otp = generateOtp();
-  const otpHash = await bcrypt.hash(otp, 10);
-
   const user = await User.create({
-    name,
-    email: email.toLowerCase(),
+    name: name.trim(),
+    email: normalizedEmail,
     password,
-    isVerified: false,
-    otpHash,
-    otpExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins
-    otpAttempts: 0,
-    otpLastSentAt: new Date(),
+    isVerified: true,
   });
 
-  await sendOtpEmail(user.email, user.name, otp);
-
-  return { message: "Registration successful. Please check your email for the verification OTP." };
+  return { message: "Account created successfully! You can now sign in." };
 };
 
 export const verifyUserOtp = async ({ email, otp }, res) => {
@@ -127,7 +111,12 @@ export const resendUserOtp = async ({ email }) => {
 };
 
 export const loginUser = async ({ email, password }, res) => {
-  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!email || !password) {
+    throw new ApiError(400, "Please provide email and password.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail });
 
   if (!user) {
     throw new ApiError(401, "Invalid email or password.");
@@ -139,19 +128,8 @@ export const loginUser = async ({ email, password }, res) => {
   }
 
   if (!user.isVerified) {
-    // Send OTP if cooldown passed
-    if (!user.otpLastSentAt || new Date() - new Date(user.otpLastSentAt) >= 60 * 1000) {
-      const otp = generateOtp();
-      user.otpHash = await bcrypt.hash(otp, 10);
-      user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-      user.otpAttempts = 0;
-      user.otpLastSentAt = new Date();
-      await user.save();
-      await sendOtpEmail(user.email, user.name, otp);
-    }
-    const error = new ApiError(403, "Email not verified. A new verification OTP has been sent to your email.");
-    error.code = "EMAIL_NOT_VERIFIED";
-    throw error;
+    user.isVerified = true;
+    await user.save();
   }
 
   const token = generateToken(user._id);
@@ -182,4 +160,72 @@ export const changeUserPassword = async (userId, { oldPassword, newPassword }) =
   user.password = newPassword;
   await user.save();
   return { message: "Password updated successfully." };
+};
+
+export const forgotPasswordUser = async ({ email }) => {
+  if (!email) {
+    throw new ApiError(400, "Please provide an email address.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    throw new ApiError(404, "No account found with this email address.");
+  }
+
+  if (user.resetOtpLastSentAt && new Date() - new Date(user.resetOtpLastSentAt) < 60 * 1000) {
+    const secondsRemaining = Math.ceil((60 * 1000 - (new Date() - new Date(user.resetOtpLastSentAt))) / 1000);
+    throw new ApiError(400, `Please wait ${secondsRemaining} seconds before requesting another code.`);
+  }
+
+  const otp = generateOtp();
+  const otpHash = await bcrypt.hash(otp, 10);
+
+  user.resetOtpHash = otpHash;
+  user.resetOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+  user.resetOtpAttempts = 0;
+  user.resetOtpLastSentAt = new Date();
+  await user.save();
+
+  await sendPasswordResetOtpEmail(user.email, user.name, otp);
+
+  return { message: "Password reset verification code sent to your email." };
+};
+
+export const resetPasswordUser = async ({ email, otp, newPassword }) => {
+  if (!email || !otp || !newPassword) {
+    throw new ApiError(400, "Please provide email, verification code, and new password.");
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    throw new ApiError(400, "User not found.");
+  }
+
+  if (!user.resetOtpHash || !user.resetOtpExpires || user.resetOtpExpires < new Date()) {
+    throw new ApiError(400, "Verification code has expired. Please request a new one.");
+  }
+
+  if (user.resetOtpAttempts >= 5) {
+    throw new ApiError(400, "Maximum verification attempts exceeded. Please request a new code.");
+  }
+
+  const isMatch = await bcrypt.compare(otp, user.resetOtpHash);
+  if (!isMatch) {
+    user.resetOtpAttempts += 1;
+    await user.save();
+    throw new ApiError(400, "Invalid verification code.");
+  }
+
+  user.password = newPassword;
+  user.resetOtpHash = null;
+  user.resetOtpExpires = null;
+  user.resetOtpAttempts = 0;
+  user.resetOtpLastSentAt = null;
+  await user.save();
+
+  return { message: "Password reset successfully. You can now log in." };
 };

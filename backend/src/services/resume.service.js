@@ -37,10 +37,89 @@ export const createResumeFromUpload = async (userId, file) => {
   resume.currentVersionId = version._id;
   await resume.save();
 
-  return { resume, version };
+  // Auto-run ATS Analysis so score and AI report are generated immediately upon upload
+  const analysis = await analyzeVersion(userId, resume._id, version._id);
+
+  return { resume, version, analysis };
 };
 
-export const analyzeVersion = async (userId, resumeId, versionId, targetRole) => {
+const normalizeToken = (str) => {
+  if (!str || typeof str !== "string") return "";
+  let s = str.toLowerCase().trim();
+  s = s.replace(/[\.\-\s\/]/g, "");
+  if (s === "reactjs" || s === "react") return "react";
+  if (s === "nodejs" || s === "node") return "node";
+  if (s === "typescript" || s === "ts") return "typescript";
+  if (s === "javascript" || s === "js") return "javascript";
+  if (s === "vuejs" || s === "vue") return "vue";
+  if (s === "nextjs" || s === "next") return "next";
+  return s;
+};
+
+const isKeywordInText = (kw, rawText, normRawText) => {
+  if (!kw || typeof kw !== "string") return false;
+  const cleanKw = kw.trim();
+  if (!cleanKw) return false;
+
+  const normKw = normalizeToken(cleanKw);
+  if (!normKw) return false;
+
+  if (normRawText.includes(normKw)) return true;
+
+  const lowerKw = cleanKw.toLowerCase();
+  const lowerRaw = (rawText || "").toLowerCase();
+  if (lowerRaw.includes(lowerKw)) return true;
+
+  const aliases = [];
+  if (normKw === "react") aliases.push("react", "reactjs", "react.js");
+  if (normKw === "node") aliases.push("node", "nodejs", "node.js");
+  if (normKw === "typescript") aliases.push("typescript", "ts");
+  if (normKw === "javascript") aliases.push("javascript", "js");
+  if (normKw === "vue") aliases.push("vue", "vuejs", "vue.js");
+  if (normKw === "next") aliases.push("next", "nextjs", "next.js");
+
+  for (const alias of aliases) {
+    if (lowerRaw.includes(alias) || normRawText.includes(alias.replace(/[\.\-\s\/]/g, ""))) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const processJdKeywords = (rawText, geminiPresent = [], geminiMissing = []) => {
+  const combined = [...(geminiPresent || []), ...(geminiMissing || [])];
+  if (!combined.length) return { keywordsPresent: [], keywordsMissing: [] };
+
+  const normRawText = (rawText || "").toLowerCase().replace(/[\.\-\s\/]/g, "");
+
+  const presentSet = new Set();
+  const missingSet = new Set();
+  const seenNorm = new Set();
+
+  combined.forEach((kw) => {
+    if (!kw || typeof kw !== "string") return;
+    const cleanKw = kw.trim();
+    if (!cleanKw) return;
+
+    const normKw = normalizeToken(cleanKw);
+    if (!normKw || seenNorm.has(normKw)) return;
+    seenNorm.add(normKw);
+
+    if (isKeywordInText(cleanKw, rawText, normRawText)) {
+      presentSet.add(cleanKw);
+    } else {
+      missingSet.add(cleanKw);
+    }
+  });
+
+  return {
+    keywordsPresent: Array.from(presentSet),
+    keywordsMissing: Array.from(missingSet).slice(0, 15),
+  };
+};
+
+export const analyzeVersion = async (userId, resumeId, versionId, targetRole, jobDescription) => {
   const resume = await Resume.findOne({ _id: resumeId, userId });
   if (!resume) throw new ApiError(404, "Resume not found.");
 
@@ -48,23 +127,44 @@ export const analyzeVersion = async (userId, resumeId, versionId, targetRole) =>
   const version = await Version.findOne({ _id: targetVersionId, resumeId: resume._id });
   if (!version) throw new ApiError(404, "Resume version not found.");
 
+  let trimmedJD = typeof jobDescription === "string" ? jobDescription.trim() : "";
+  if (trimmedJD.length > 0 && (trimmedJD.length < 50 || trimmedJD.length > 8000)) {
+    throw new ApiError(400, "Job description must be between 50 and 8000 characters.");
+  }
+
+  let finalTargetRole = typeof targetRole === "string" && targetRole.trim().length > 0
+    ? targetRole.trim()
+    : "";
+
   const analysisResult = await geminiAnalyzeResume(
     version.parsedSections,
     version.rawText,
-    targetRole || "General Software Engineer"
+    finalTargetRole,
+    trimmedJD
   );
+
+  let processedKeywords = { keywordsPresent: [], keywordsMissing: [] };
+  if (trimmedJD.length > 0) {
+    processedKeywords = processJdKeywords(
+      version.rawText,
+      analysisResult.keywordsPresent,
+      analysisResult.keywordsMissing
+    );
+  }
 
   // Check if analysis already exists for this version, update or create
   let analysis = await Analysis.findOne({ versionId: version._id });
   if (analysis) {
     analysis.atsScore = analysisResult.atsScore;
     analysis.model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    analysis.targetRole = targetRole !== undefined ? targetRole : (analysis.targetRole || "");
+    analysis.jobDescription = trimmedJD;
     analysis.summary = analysisResult.summary;
     analysis.scoreBreakdown = analysisResult.scoreBreakdown;
     analysis.issues = analysisResult.issues;
     analysis.strengths = analysisResult.strengths;
-    analysis.keywordsPresent = analysisResult.keywordsPresent;
-    analysis.keywordsMissing = analysisResult.keywordsMissing;
+    analysis.keywordsPresent = processedKeywords.keywordsPresent;
+    analysis.keywordsMissing = processedKeywords.keywordsMissing;
     analysis.bulletRewrites = analysisResult.bulletRewrites;
     await analysis.save();
   } else {
@@ -72,12 +172,14 @@ export const analyzeVersion = async (userId, resumeId, versionId, targetRole) =>
       versionId: version._id,
       atsScore: analysisResult.atsScore,
       model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      targetRole: targetRole || "",
+      jobDescription: trimmedJD,
       summary: analysisResult.summary,
       scoreBreakdown: analysisResult.scoreBreakdown,
       issues: analysisResult.issues,
       strengths: analysisResult.strengths,
-      keywordsPresent: analysisResult.keywordsPresent,
-      keywordsMissing: analysisResult.keywordsMissing,
+      keywordsPresent: processedKeywords.keywordsPresent,
+      keywordsMissing: processedKeywords.keywordsMissing,
       bulletRewrites: analysisResult.bulletRewrites,
     });
   }
@@ -123,8 +225,10 @@ export const createRewriteVersion = async (userId, resumeId, versionId, appliedR
   resume.currentVersionId = newVersion._id;
   await resume.save();
 
-  // Auto-analyze new version
-  const newAnalysis = await analyzeVersion(userId, resume._id, newVersion._id);
+  // Auto-analyze new version, reusing the latest targetRole and jobDescription
+  const savedTargetRole = sourceAnalysis?.targetRole || "";
+  const savedJobDescription = sourceAnalysis?.jobDescription || "";
+  const newAnalysis = await analyzeVersion(userId, resume._id, newVersion._id, savedTargetRole, savedJobDescription);
 
   return { version: newVersion, analysis: newAnalysis };
 };

@@ -56,6 +56,15 @@ const analysisSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    targetRole: {
+      type: String,
+      default: "",
+    },
+    jobDescription: {
+      type: String,
+      default: "",
+      maxlength: 8000,
+    },
     summary: {
       type: String,
       required: true,

@@ -37,7 +37,7 @@ export function History() {
   const filteredHistory = (history || []).filter((item) => {
     if (filter === "all") return true;
     if (filter === "upload") return item.type === "upload";
-    if (filter === "analysis") return item.type === "analysis";
+    if (filter === "analysis") return item.type === "analysis" || (item.score !== null && item.score !== undefined);
     if (filter === "rewrite") return item.type === "rewrite";
     return true;
   });
