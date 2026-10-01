@@ -1,4 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
+import User from "../models/User.model.js";
+import bcrypt from "bcryptjs";
 import Resume from "../models/Resume.model.js";
 import Version from "../models/Version.model.js";
 import Analysis from "../models/Analysis.model.js";
@@ -322,4 +323,36 @@ export const deleteResume = async (userId, resumeId) => {
   await Resume.deleteOne({ _id: resume._id });
 
   return { message: "Resume deleted successfully." };
+};
+
+export const deleteUserAccount = async (userId, password) => {
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found.");
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) throw new ApiError(400, "Incorrect password.");
+
+  const resumes = await Resume.find({ userId });
+  const resumeIds = resumes.map((r) => r._id);
+
+  const versions = await Version.find({ resumeId: { $in: resumeIds } });
+  const versionIds = versions.map((v) => v._id);
+
+  // Safe S3 deletion
+  for (const v of versions) {
+    if (v.s3Key) {
+      try {
+        await deleteFromS3(v.s3Key);
+      } catch (err) {
+        console.warn("[S3 Delete Warning]", err.message);
+      }
+    }
+  }
+
+  await Analysis.deleteMany({ versionId: { $in: versionIds } });
+  await Version.deleteMany({ resumeId: { $in: resumeIds } });
+  await Resume.deleteMany({ userId });
+  await User.deleteOne({ _id: userId });
+
+  return { message: "Account and associated data deleted successfully." };
 };

@@ -12,6 +12,7 @@ import {
   changePassword,
   forgotPassword,
   resetPassword,
+  deleteAccount,
 } from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -89,6 +90,12 @@ const resetPasswordSchema = {
   }),
 };
 
+const deleteAccountSchema = {
+  body: z.object({
+    password: z.string().min(1, "Password is required"),
+  }),
+};
+
 // Public auth routes with strict rate limit
 router.post("/register", authLimiter, validate(registerSchema), register);
 router.post("/verify-otp", authLimiter, validate(verifyOtpSchema), verifyOtp);
@@ -102,5 +109,6 @@ router.post("/logout", verifyJWT, logout);
 router.get("/me", verifyJWT, me);
 router.patch("/profile", verifyJWT, validate(updateProfileSchema), updateProfile);
 router.patch("/password", verifyJWT, validate(changePasswordSchema), changePassword);
+router.delete("/account", verifyJWT, validate(deleteAccountSchema), deleteAccount);
 
 export default router;

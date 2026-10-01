@@ -11,6 +11,7 @@ import {
   forgotPasswordUser,
   resetPasswordUser,
 } from "../services/auth.service.js";
+import { deleteUserAccount } from "../services/resume.service.js";
 
 export const register = asyncHandler(async (req, res) => {
   const result = await registerUser(req.body);
@@ -59,4 +60,14 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
   const result = await resetPasswordUser(req.body);
   res.status(200).json(new ApiResponse(200, result, result.message));
+});
+
+export const deleteAccount = asyncHandler(async (req, res) => {
+  const result = await deleteUserAccount(req.user._id, req.body.password);
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+  res.status(200).json(new ApiResponse(200, result, "Account deleted successfully."));
 });

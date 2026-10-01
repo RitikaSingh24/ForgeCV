@@ -41,6 +41,10 @@ export const authApi = {
     const res = await apiClient.post("/auth/reset-password", data);
     return res.data;
   },
+  deleteAccount: async (data) => {
+    const res = await apiClient.delete("/auth/account", { data });
+    return res.data;
+  },
 };
 
 export default authApi;
